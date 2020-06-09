@@ -11,12 +11,8 @@ public class MainWindow {
 	public static void main(String[] args) {
 		try(DatagramSocket sock = new DatagramSocket(60000)) {
 			
-			
 			LinkedList<InetAddress> clients = new LinkedList<InetAddress>();
 			System.out.println("Создан пустой список клиентов");
-			
-			boolean isExist = false;
-			System.out.println("Создан флаг проверки существования клиента");
 			
 			byte[] map = new byte[256];
 			System.out.println("Создана байтовая карта");
@@ -30,37 +26,39 @@ public class MainWindow {
 			System.out.println("===========================================");
 			while(true) {
 				
-				isExist = false;
-				
 				pack.setData(buf);
-				pack.setLength(256);
 				System.out.println("Ожидаются данные");
 				sock.receive(pack);
 				System.out.println("Получено: " + pack.getLength() + " bytes");
-
+				
 				if(pack.getLength() != 2) {
-					System.out.println("!!!Неверная длина полученного пакета!!!");
-					continue;
-				}
-				
-				for(InetAddress addr : clients) {
-					
-					if(addr.toString().compareTo(pack.getAddress().toString()) == 0) {
-						System.out.println("Клиент уже соединен!");
-						isExist = true;
+					if(pack.getLength() == 1) {
+						if(pack.getData()[0] == 1) {
+							pack.setData(map);
+							pack.setPort(7000);
+							sock.send(pack);
+							clients.add(pack.getAddress());
+							System.out.println("Клиент подключен. IP: " + pack.getAddress());
+						}
+						else if(pack.getData()[0] == 0) {
+							for(int i = 0; i < clients.size(); i++) {
+								if(clients.get(i).toString().compareTo(pack.getAddress().toString())==0) {
+									System.out.println("Клиент отлючен. IP: " + clients.remove(i));
+									break;
+								}
+							}
+						}
 					}
-				}
-				
-				if(!isExist) {
-					clients.add(pack.getAddress());
-					System.out.println("Клиент добавлен в список соединений!");
+					else {
+						System.out.println("!!!Неверная длина полученного пакета!!!");
+					}
+					continue;
 				}
 				
 				map[pack.getData()[0]] = pack.getData()[1];
 				System.out.println("Карта преобразована по запросу");
 				
 				pack.setData(map);
-				pack.setLength(256);
 				pack.setPort(7000);
 				System.out.println("Карта подготовлена для отправки на порт " + pack.getPort());
 				
